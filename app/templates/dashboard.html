@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Department Store ERP Dashboard</h1>
+
+    <div class="grid">
+        <div class="card">
+            <div class="label">Total Sales</div>
+            <div class="value">{{ total_sales }}</div>
+        </div>
+        <div class="card">
+            <div class="label">Total Purchases</div>
+            <div class="value">{{ total_purchases }}</div>
+        </div>
+        <div class="card">
+            <div class="label">Inventory Items</div>
+            <div class="value">{{ inventory_count }}</div>
+        </div>
+        <div class="card">
+            <div class="label">AR Balance</div>
+            <div class="value">{{ ar_total }}</div>
+        </div>
+        <div class="card">
+            <div class="label">AP Balance</div>
+            <div class="value">{{ ap_total }}</div>
+        </div>
+    </div>
+{% endblock %}

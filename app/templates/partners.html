@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Business Partner Onboarding</h1>
+
+<!-- <form method="post" action="/partners/create" class="card p-3 mb-4">
+    <div class="row g-2">
+        <div class="col-md-4"><input class="form-control" name="partner_name" placeholder="Partner Name" required></div>
+        <div class="col-md-3">
+            <select class="form-select" name="partner_type">
+                <option value="CUSTOMER">Customer</option>
+                <option value="SUPPLIER">Supplier</option>
+            </select>
+        </div>
+        <div class="col-md-2"><input class="form-control" name="email" placeholder="Email"></div>
+        <div class="col-md-2"><input class="form-control" name="phone" placeholder="Phone"></div>
+        <div class="col-md-1"><button class="btn btn-primary w-100">Create</button></div>
+    </div>
+</form> -->
+
+<table class="table table-bordered bg-white">
+    <thead><tr><th>P_ID</th><th>Name</th><th>Type</th><th>Email</th><th>phone</th><th>address</th></tr></thead>
+    <tbody>
+        {% for p in partners %}
+        <tr>
+            <td>{{ p.id }}</td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.partner_type }}</td>
+            <td>{{ p.email }}</td>
+            <td>{{ p.phone }}</td>
+            <td>{{ p.address }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
