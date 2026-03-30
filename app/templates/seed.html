@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Generate Fake Data</h1>
+
+<h2>Seed Business Partners</h2>
+<form method="post" action="/seed/partners">
+    Customers: <input type="number" name="customer_count" placeholder="Customers" value="30">
+    Suppliers<input type="number" name="supplier_count" placeholder="Suppliers" value="10">
+    Tenants<input type="number" name="tenant_count" placeholder="Tenants" value="5">
+    <button type="submit">Seed Business Partners</button>
+</form>
+
+<hr>
+
+<h2>Seed Inventory</h2>
+<form method="post" action="/seed/inventory">
+    <input type="number" name="item_count" placeholder="Inventory Items" value="50">
+    <button type="submit">Seed Inventory</button>
+</form>
+
+<hr>
+
+<h2>Seed Sales</h2>
+<form method="post" action="/seed/sales">
+    <input type="number" name="sale_count" placeholder="Sales Transactions" value="100">
+    <button type="submit">Seed Sales</button>
+</form>
+
+<hr>
+
+<h2>Seed Purchases</h2>
+<form method="post" action="/seed/purchases">
+    <input type="number" name="purchase_count" placeholder="Purchase Transactions" value="80">
+    <button type="submit">Seed Purchases</button>
+</form>
+
+<hr>
+
+<h2>Seed Assets</h2>
+<form method="post" action="/seed/assets">
+    <input type="number" name="asset_count" placeholder="Assets" value="20">
+    <button type="submit">Seed Assets</button>
+</form>
+
+<hr>
+
+<h2>Seed Everything</h2>
+<form method="post" action="/seed/all">
+    <button type="submit">Seed Everything</button>
+</form>
+
+{% if message %}
+    <p class="success">{{ message }}</p>
+{% endif %}
+
+{% if error %}
+    <p class="error">{{ error }}</p>
+{% endif %}
+{% endblock %}

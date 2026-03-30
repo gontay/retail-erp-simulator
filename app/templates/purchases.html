@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Create Purchase</h1>
+
+<form method="post">
+    <label>Supplier</label>
+    <select name="supplier_id" required>
+        {% for s in suppliers %}
+            <option value="{{ s.id }}">
+                {{ s.business_partner.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <input type="date" name="purchase_date" required>
+
+    <label>Payment Method</label>
+    <select name="payment_method" required>
+        <option value="cash">Cash</option>
+        <option value="credit">Credit</option>
+    </select>
+
+    <label>Inventory Item</label>
+    <select name="inventory_id" required>
+        {% for i in inventory_items %}
+            <option value="{{ i.id }}">
+                {{ i.sku }} - {{ i.product_name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <input type="number" step="0.01" name="quantity" placeholder="Quantity" required>
+    <input type="number" step="0.01" name="unit_cost" placeholder="Unit Cost" required>
+
+    <button type="submit">Create Purchase</button>
+</form>
+
+{% if message %}<p class="success">{{ message }}</p>{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% endblock %}

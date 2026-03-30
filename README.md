@@ -8,9 +8,10 @@ A proof of concept of a data pipeline for retail operations to a datawarehouse
     - Apply Medalion Architecture
 
 ## Todos
-- Create working Sale and ERP simulation
-- Extract OLTP
-- Create Staging
+- [x]Create working Sale and ERP simulation
+- []Extract OLTP
+- []Create Staging
 
 ## Changelog
 ver 0.0 added initial development
+ver 0.1 added source simulator

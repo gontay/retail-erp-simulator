@@ -1,27 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-    <h1>Department Store ERP Dashboard</h1>
+<h1>Retail ERP Prototype</h1>
+<p>This is a simplified source system for retail and finance transaction generation.</p>
 
-    <div class="grid">
-        <div class="card">
-            <div class="label">Total Sales</div>
-            <div class="value">{{ total_sales }}</div>
-        </div>
-        <div class="card">
-            <div class="label">Total Purchases</div>
-            <div class="value">{{ total_purchases }}</div>
-        </div>
-        <div class="card">
-            <div class="label">Inventory Items</div>
-            <div class="value">{{ inventory_count }}</div>
-        </div>
-        <div class="card">
-            <div class="label">AR Balance</div>
-            <div class="value">{{ ar_total }}</div>
-        </div>
-        <div class="card">
-            <div class="label">AP Balance</div>
-            <div class="value">{{ ap_total }}</div>
-        </div>
-    </div>
+<ul>
+    <li><a href="/partners/new">Create Business Partner</a></li>
+    <li><a href="/inventory/new">Create Inventory Item</a></li>
+    <li><a href="/sales/new">Create Sale</a></li>
+    <li><a href="/purchases/new">Create Purchase</a></li>
+    <li><a href="/assets/new">Create Asset</a></li>
+    <li><a href="/seed/">Generate Fake Data</a></li>
+</ul>
 {% endblock %}

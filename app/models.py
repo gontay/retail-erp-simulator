@@ -1,314 +1,235 @@
+from datetime import datetime, date
+from decimal import Decimal
 from sqlalchemy import (
-    Column, Integer, String, Float, Date, DateTime, ForeignKey, Boolean, Text, Numeric
+    Column, Integer, String, Date, DateTime, ForeignKey,
+    Numeric, Boolean, Text
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from .db import Base
 
 
 # =========================
-# MASTER DATA
+# AUDIT MIXIN
 # =========================
+class AuditMixin:
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-class Inventory(Base):
+
+# =========================
+# BUSINESS PARTNERS
+# =========================
+class BusinessPartner(Base, AuditMixin):
+    __tablename__ = "business_partners"
+
+    id = Column(Integer, primary_key=True, index=True)
+    partner_code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    partner_type = Column(String(50), nullable=True)  # Individual / Company
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    address = Column(Text, nullable=True)
+
+    is_customer = Column(Boolean, default=False)
+    is_supplier = Column(Boolean, default=False)
+    is_tenant = Column(Boolean, default=False)
+
+    customer = relationship("Customer", back_populates="business_partner", uselist=False)
+    supplier = relationship("Supplier", back_populates="business_partner", uselist=False)
+    tenant = relationship("Tenant", back_populates="business_partner", uselist=False)
+
+
+class Customer(Base, AuditMixin):
+    __tablename__ = "customers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    business_partner_id = Column(Integer, ForeignKey("business_partners.id"), unique=True, nullable=False)
+    customer_group = Column(String(100), nullable=True)
+
+    business_partner = relationship("BusinessPartner", back_populates="customer")
+    sales = relationship("Sales", back_populates="customer")
+    receivables = relationship("AccountsReceivable", back_populates="customer")
+
+
+class Supplier(Base, AuditMixin):
+    __tablename__ = "suppliers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    business_partner_id = Column(Integer, ForeignKey("business_partners.id"), unique=True, nullable=False)
+    supplier_category = Column(String(100), nullable=True)
+
+    business_partner = relationship("BusinessPartner", back_populates="supplier")
+    purchases = relationship("Purchases", back_populates="supplier")
+    payables = relationship("AccountsPayable", back_populates="supplier")
+
+
+class Tenant(Base, AuditMixin):
+    __tablename__ = "tenants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    business_partner_id = Column(Integer, ForeignKey("business_partners.id"), unique=True, nullable=False)
+    lease_start_date = Column(Date, nullable=True)
+    lease_end_date = Column(Date, nullable=True)
+
+    business_partner = relationship("BusinessPartner", back_populates="tenant")
+
+
+# =========================
+# INVENTORY / PRODUCTS
+# =========================
+class Inventory(Base, AuditMixin):
     __tablename__ = "inventory"
 
     id = Column(Integer, primary_key=True, index=True)
-    sku = Column(String(50), unique=True, nullable=False, index=True)
-    name = Column(String(255), nullable=False)
-    category = Column(String(100))
-    unit = Column(String(20), default="pcs")
-    cost_price = Column(Numeric(12, 2), default=0)
-    selling_price = Column(Numeric(12, 2), default=0)
-    quantity_on_hand = Column(Integer, default=0)
-    reorder_level = Column(Integer, default=10)
+    sku = Column(String(50), unique=True, nullable=False)
+    product_name = Column(String(255), nullable=False)
+    category = Column(String(100), nullable=True)
+    unit_price = Column(Numeric(12, 2), nullable=False, default=0)
+    unit_cost = Column(Numeric(12, 2), nullable=False, default=0)
+    quantity_on_hand = Column(Numeric(12, 2), nullable=False, default=0)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    sale_items = relationship("SaleItem", back_populates="inventory_item")
-    purchase_items = relationship("PurchaseItem", back_populates="inventory_item")
-    deliveries = relationship("Delivery", back_populates="inventory_item")
-
-
-class BusinessPartner(Base):
-    __tablename__ = "business_partner"
-
-    id = Column(Integer, primary_key=True, index=True)
-    partner_code = Column(String(50), unique=True, nullable=False, index=True)
-    name = Column(String(255), nullable=False)
-    partner_type = Column(String(50), nullable=False)  # SUPPLIER / CUSTOMER / TENANT / MIXED
-    contact_person = Column(String(255))
-    email = Column(String(255))
-    phone = Column(String(50))
-    address = Column(Text)
-    credit_limit = Column(Numeric(12, 2), default=0)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    supplier = relationship("Supplier", back_populates="partner", uselist=False)
-    customer = relationship("Customer", back_populates="partner", uselist=False)
-    tenant = relationship("Tenant", back_populates="partner", uselist=False)
-
-    sales = relationship("Sales", back_populates="customer_partner", foreign_keys="Sales.customer_partner_id")
-    purchases = relationship("Purchases", back_populates="supplier_partner", foreign_keys="Purchases.supplier_partner_id")
-    deliveries = relationship("Delivery", back_populates="business_partner")
-
-
-class Supplier(Base):
-    __tablename__ = "supplier"
-
-    id = Column(Integer, primary_key=True, index=True)
-    partner_id = Column(Integer, ForeignKey("business_partner.id"), unique=True)
-    supplier_rating = Column(String(20))
-    payment_terms_days = Column(Integer, default=30)
-
-    partner = relationship("BusinessPartner", back_populates="supplier")
-
-
-class Customer(Base):
-    __tablename__ = "customer"
-
-    id = Column(Integer, primary_key=True, index=True)
-    partner_id = Column(Integer, ForeignKey("business_partner.id"), unique=True)
-    loyalty_tier = Column(String(50), default="Standard")
-
-    partner = relationship("BusinessPartner", back_populates="customer")
-    member = relationship("Member", back_populates="customer", uselist=False)
-
-
-class Tenant(Base):
-    __tablename__ = "tenant"
-
-    id = Column(Integer, primary_key=True, index=True)
-    partner_id = Column(Integer, ForeignKey("business_partner.id"), unique=True)
-    shop_name = Column(String(255))
-    rental_rate = Column(Numeric(12, 2), default=0)
-    lease_start = Column(Date)
-    lease_end = Column(Date)
-
-    partner = relationship("BusinessPartner", back_populates="tenant")
-
-
-class Member(Base):
-    __tablename__ = "member"
-
-    id = Column(Integer, primary_key=True, index=True)
-    member_code = Column(String(50), unique=True, nullable=False)
-    customer_id = Column(Integer, ForeignKey("customer.id"), unique=True)
-    join_date = Column(Date)
-    points_balance = Column(Integer, default=0)
-    membership_status = Column(String(50), default="Active")
-
-    customer = relationship("Customer", back_populates="member")
+    sale_items = relationship("SaleItem", back_populates="inventory")
+    purchase_items = relationship("PurchaseItem", back_populates="inventory")
 
 
 # =========================
 # SALES
 # =========================
-
-class Sales(Base):
+class Sales(Base, AuditMixin):
     __tablename__ = "sales"
 
     id = Column(Integer, primary_key=True, index=True)
-    sale_no = Column(String(50), unique=True, nullable=False, index=True)
-    sale_date = Column(DateTime(timezone=True), server_default=func.now())
-    customer_partner_id = Column(Integer, ForeignKey("business_partner.id"), nullable=True)
-    member_id = Column(Integer, ForeignKey("member.id"), nullable=True)
-    payment_method = Column(String(50), default="CASH")
-    gross_amount = Column(Numeric(12, 2), default=0)
-    discount_amount = Column(Numeric(12, 2), default=0)
-    tax_amount = Column(Numeric(12, 2), default=0)
-    net_amount = Column(Numeric(12, 2), default=0)
-    status = Column(String(50), default="POSTED")
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    sale_date = Column(Date, nullable=False, default=date.today)
+    total_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    payment_method = Column(String(50), nullable=False)  # cash / credit
+    status = Column(String(50), nullable=False, default="Completed")
 
-    customer_partner = relationship("BusinessPartner", back_populates="sales", foreign_keys=[customer_partner_id])
-    items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
+    customer = relationship("Customer", back_populates="sales")
+    sale_items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
+    receivable = relationship("AccountsReceivable", back_populates="sale", uselist=False)
 
 
-class SaleItem(Base):
+class SaleItem(Base, AuditMixin):
     __tablename__ = "sale_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    sale_id = Column(Integer, ForeignKey("sales.id"))
-    inventory_id = Column(Integer, ForeignKey("inventory.id"))
-    quantity = Column(Integer, nullable=False)
+    sale_id = Column(Integer, ForeignKey("sales.id"), nullable=False)
+    inventory_id = Column(Integer, ForeignKey("inventory.id"), nullable=False)
+    quantity = Column(Numeric(12, 2), nullable=False)
     unit_price = Column(Numeric(12, 2), nullable=False)
     line_total = Column(Numeric(12, 2), nullable=False)
 
-    sale = relationship("Sales", back_populates="items")
-    inventory_item = relationship("Inventory", back_populates="sale_items")
+    sale = relationship("Sales", back_populates="sale_items")
+    inventory = relationship("Inventory", back_populates="sale_items")
 
 
 # =========================
-# PURCHASING
+# PURCHASES
 # =========================
-
-class Purchases(Base):
+class Purchases(Base, AuditMixin):
     __tablename__ = "purchases"
 
     id = Column(Integer, primary_key=True, index=True)
-    purchase_no = Column(String(50), unique=True, nullable=False, index=True)
-    purchase_date = Column(DateTime(timezone=True), server_default=func.now())
-    supplier_partner_id = Column(Integer, ForeignKey("business_partner.id"))
-    gross_amount = Column(Numeric(12, 2), default=0)
-    tax_amount = Column(Numeric(12, 2), default=0)
-    net_amount = Column(Numeric(12, 2), default=0)
-    status = Column(String(50), default="POSTED")
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    purchase_date = Column(Date, nullable=False, default=date.today)
+    total_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    payment_method = Column(String(50), nullable=False)  # cash / credit
+    status = Column(String(50), nullable=False, default="Received")
 
-    supplier_partner = relationship("BusinessPartner", back_populates="purchases", foreign_keys=[supplier_partner_id])
-    items = relationship("PurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
+    supplier = relationship("Supplier", back_populates="purchases")
+    purchase_items = relationship("PurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
+    payable = relationship("AccountsPayable", back_populates="purchase", uselist=False)
 
 
-class PurchaseItem(Base):
+class PurchaseItem(Base, AuditMixin):
     __tablename__ = "purchase_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    purchase_id = Column(Integer, ForeignKey("purchases.id"))
-    inventory_id = Column(Integer, ForeignKey("inventory.id"))
-    quantity = Column(Integer, nullable=False)
+    purchase_id = Column(Integer, ForeignKey("purchases.id"), nullable=False)
+    inventory_id = Column(Integer, ForeignKey("inventory.id"), nullable=False)
+    quantity = Column(Numeric(12, 2), nullable=False)
     unit_cost = Column(Numeric(12, 2), nullable=False)
     line_total = Column(Numeric(12, 2), nullable=False)
 
-    purchase = relationship("Purchases", back_populates="items")
-    inventory_item = relationship("Inventory", back_populates="purchase_items")
+    purchase = relationship("Purchases", back_populates="purchase_items")
+    inventory = relationship("Inventory", back_populates="purchase_items")
 
 
 # =========================
-# DELIVERY / LOGISTICS
+# ASSETS
 # =========================
-
-class Delivery(Base):
-    __tablename__ = "delivery"
-
-    id = Column(Integer, primary_key=True, index=True)
-    delivery_no = Column(String(50), unique=True, nullable=False)
-    delivery_type = Column(String(50))  # INBOUND / OUTBOUND / INTERNAL
-    business_partner_id = Column(Integer, ForeignKey("business_partner.id"), nullable=True)
-    inventory_id = Column(Integer, ForeignKey("inventory.id"))
-    quantity = Column(Integer, nullable=False)
-    delivery_date = Column(DateTime(timezone=True), server_default=func.now())
-    status = Column(String(50), default="DELIVERED")
-    remarks = Column(Text)
-
-    business_partner = relationship("BusinessPartner", back_populates="deliveries")
-    inventory_item = relationship("Inventory", back_populates="deliveries")
-
-
-# =========================
-# FINANCE
-# =========================
-
-class AccountsReceivable(Base):
-    __tablename__ = "accounts_receivable"
-
-    id = Column(Integer, primary_key=True, index=True)
-    ar_no = Column(String(50), unique=True, nullable=False)
-    customer_partner_id = Column(Integer, ForeignKey("business_partner.id"))
-    source_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True)
-    invoice_date = Column(Date)
-    due_date = Column(Date)
-    amount = Column(Numeric(12, 2), default=0)
-    balance = Column(Numeric(12, 2), default=0)
-    status = Column(String(50), default="OPEN")
-
-
-class AccountsPayable(Base):
-    __tablename__ = "accounts_payable"
-
-    id = Column(Integer, primary_key=True, index=True)
-    ap_no = Column(String(50), unique=True, nullable=False)
-    supplier_partner_id = Column(Integer, ForeignKey("business_partner.id"))
-    source_purchase_id = Column(Integer, ForeignKey("purchases.id"), nullable=True)
-    invoice_date = Column(Date)
-    due_date = Column(Date)
-    amount = Column(Numeric(12, 2), default=0)
-    balance = Column(Numeric(12, 2), default=0)
-    status = Column(String(50), default="OPEN")
-
-
-class Dunning(Base):
-    __tablename__ = "dunning"
-
-    id = Column(Integer, primary_key=True, index=True)
-    dunning_no = Column(String(50), unique=True, nullable=False)
-    ar_id = Column(Integer, ForeignKey("accounts_receivable.id"))
-    dunning_level = Column(Integer, default=1)
-    notice_date = Column(Date)
-    remarks = Column(Text)
-
-
-class UniversalJournal(Base):
-    __tablename__ = "universal_journal"
-
-    id = Column(Integer, primary_key=True, index=True)
-    doc_no = Column(String(50), nullable=False, index=True)
-    posting_date = Column(Date, nullable=False)
-    account_code = Column(String(50), nullable=False)
-    account_name = Column(String(255), nullable=False)
-    partner_id = Column(Integer, ForeignKey("business_partner.id"), nullable=True)
-    reference_type = Column(String(50))  # SALE / PURCHASE / ASSET / CASH / TREASURY
-    reference_id = Column(Integer, nullable=True)
-    debit = Column(Numeric(12, 2), default=0)
-    credit = Column(Numeric(12, 2), default=0)
-    description = Column(Text)
-
-
-class Treasury(Base):
-    __tablename__ = "treasury"
-
-    id = Column(Integer, primary_key=True, index=True)
-    txn_no = Column(String(50), unique=True, nullable=False)
-    txn_date = Column(Date)
-    txn_type = Column(String(50))  # BANK_IN / BANK_OUT / TRANSFER
-    bank_account = Column(String(100))
-    amount = Column(Numeric(12, 2), default=0)
-    description = Column(Text)
-
-
-class CashFloat(Base):
-    __tablename__ = "cash_float"
-
-    id = Column(Integer, primary_key=True, index=True)
-    float_no = Column(String(50), unique=True, nullable=False)
-    txn_date = Column(Date)
-    cashier_name = Column(String(255))
-    opening_float = Column(Numeric(12, 2), default=0)
-    cash_in = Column(Numeric(12, 2), default=0)
-    cash_out = Column(Numeric(12, 2), default=0)
-    closing_float = Column(Numeric(12, 2), default=0)
-    remarks = Column(Text)
-
-
-# =========================
-# FIXED ASSETS
-# =========================
-
-class Asset(Base):
-    __tablename__ = "asset"
+class Asset(Base, AuditMixin):
+    __tablename__ = "assets"
 
     id = Column(Integer, primary_key=True, index=True)
     asset_code = Column(String(50), unique=True, nullable=False)
     asset_name = Column(String(255), nullable=False)
-    category = Column(String(100))
-    acquisition_date = Column(Date)
-    acquisition_cost = Column(Numeric(12, 2), default=0)
-    useful_life_months = Column(Integer, default=60)
-    salvage_value = Column(Numeric(12, 2), default=0)
-    accumulated_depreciation = Column(Numeric(12, 2), default=0)
-    net_book_value = Column(Numeric(12, 2), default=0)
-    status = Column(String(50), default="ACTIVE")
+    category = Column(String(100), nullable=True)
+    acquisition_date = Column(Date, nullable=False)
+    acquisition_cost = Column(Numeric(12, 2), nullable=False)
+    useful_life_months = Column(Integer, nullable=False)
+    salvage_value = Column(Numeric(12, 2), nullable=False, default=0)
+    status = Column(String(50), nullable=False, default="Active")
 
-    depreciations = relationship("Depreciation", back_populates="asset", cascade="all, delete-orphan")
+    depreciation_entries = relationship("Depreciation", back_populates="asset", cascade="all, delete-orphan")
 
 
-class Depreciation(Base):
+class Depreciation(Base, AuditMixin):
     __tablename__ = "depreciation"
 
     id = Column(Integer, primary_key=True, index=True)
-    asset_id = Column(Integer, ForeignKey("asset.id"))
-    posting_date = Column(Date)
-    depreciation_amount = Column(Numeric(12, 2), default=0)
-    accumulated_depreciation = Column(Numeric(12, 2), default=0)
-    net_book_value = Column(Numeric(12, 2), default=0)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=False)
+    depreciation_date = Column(Date, nullable=False)
+    depreciation_amount = Column(Numeric(12, 2), nullable=False)
 
-    asset = relationship("Asset", back_populates="depreciations")
+    asset = relationship("Asset", back_populates="depreciation_entries")
+
+
+# =========================
+# SUBLEDGER TABLES
+# =========================
+class AccountsReceivable(Base, AuditMixin):
+    __tablename__ = "accounts_receivable"
+
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    sale_id = Column(Integer, ForeignKey("sales.id"), unique=True, nullable=False)
+    amount_due = Column(Numeric(12, 2), nullable=False)
+    due_date = Column(Date, nullable=False)
+    status = Column(String(50), nullable=False, default="Open")
+
+    customer = relationship("Customer", back_populates="receivables")
+    sale = relationship("Sales", back_populates="receivable")
+
+
+class AccountsPayable(Base, AuditMixin):
+    __tablename__ = "accounts_payable"
+
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    purchase_id = Column(Integer, ForeignKey("purchases.id"), unique=True, nullable=True)
+    amount_due = Column(Numeric(12, 2), nullable=False)
+    due_date = Column(Date, nullable=False)
+    status = Column(String(50), nullable=False, default="Open")
+
+    supplier = relationship("Supplier", back_populates="payables")
+    purchase = relationship("Purchases", back_populates="payable")
+
+
+# =========================
+# GENERAL LEDGER
+# =========================
+class UniversalJournal(Base, AuditMixin):
+    __tablename__ = "universal_journal"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entry_date = Column(Date, nullable=False)
+    reference_type = Column(String(50), nullable=False)  # SALE / PURCHASE / ASSET / DEPRECIATION
+    reference_id = Column(Integer, nullable=False)
+    account_code = Column(String(20), nullable=False)
+    account_name = Column(String(255), nullable=False)
+    debit = Column(Numeric(12, 2), nullable=False, default=0)
+    credit = Column(Numeric(12, 2), nullable=False, default=0)
+    description = Column(Text, nullable=True)
