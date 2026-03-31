@@ -9,16 +9,19 @@ Python
 To get started, follow these steps:
 
 1. Clone the repository
-``` git clone https://github.com/<your_username>/retail-erp-simulator.git
+``` 
+git clone https://github.com/<your_username>/retail-erp-simulator.git
 ```
 
 2. Install the required dependencies
 
-``` pip install -r requirements
+``` 
+pip install -r requirements
 ```
 
 3. Run the application
-```uvicorn run:app --reload
+```
+uvicorn run:app --reload
 ```
 
 4. Add data into your database at "http://localhost:8000/seed/"
