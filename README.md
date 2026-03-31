@@ -2,8 +2,9 @@
 A simulation for operational systems to simulate transactions to an OLTP Database.
 
 ## Prequisites
-Postgres SQL
-Python
+This simulator requires you have the following installed
+- PostgreSQL
+- Python
 
 ## Getting Started
 To get started, follow these steps:
