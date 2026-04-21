@@ -4,17 +4,21 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 load_dotenv()
-DATABASE_URL = os.environ.get("DBURL")
-DB_NAME = os.environ.get("DBNAME")
-PG_USER = os.environ.get("PG_USER")
-PG_PASSWORD = os.environ.get("PG_PASSWORD")
-
 # =========================================================
 # DATABASE URL
 # =========================================================
 # Example:
 # postgresql+psycopg://postgres:password@localhost:5432/retail_erp
-DATABASE_URL = f"postgresql+psycopg://{PG_USER}:{PG_PASSWORD}@{DATABASE_URL}/{DB_NAME}"
+
+#use this for cloud based DB example: Supabase
+DATABASE_URL = os.environ.get("DB_URL")
+
+#use this for local PostgresDB 
+#DBURL = os.environ.get("DBURL")
+#DB_NAME = os.environ.get("DBNAME")
+#PG_USER = os.environ.get("PG_USER")
+#PG_PASSWORD = os.environ.get("PG_PASSWORD")
+#DATABASE_URL = f"postgresql+psycopg://{PG_USER}:{PG_PASSWORD}@{DBURL}/{DB_NAME}"
 
 
 # =========================================================
