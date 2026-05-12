@@ -1,8 +1,9 @@
 # retail-erp-simulator
-A simulation for operational systems to simulate transactions to an OLTP Database.
-
+This an auxillary project to a data pipeline project which is hosted on databricks.
+This project simulates operational systems and generates transactions to an OLTP Database.
+ 
 ## Prequisites
-This simulator requires you have the following installed
+This simulator requires you have the following installed:
 - PostgreSQL
 - Python
 
@@ -26,6 +27,10 @@ DBURL = <database url>
 DBNAME = <database name>
 PG_USER = <postgresSQL username>
 PG_PASSWORD = <postgreSQL password>
+```
+or this if you are using a cloud based PostgreSQL server
+```
+DBURL = <cloud based database connection String>
 ```
 
 3. Run the application
