@@ -22,15 +22,23 @@ pip install -r requirements
 ```
 
 4. Create and add the following variables in your .env
+
+local PostgreSQL Server:
 ```
 DBURL = <database url>
 DBNAME = <database name>
 PG_USER = <postgresSQL username>
 PG_PASSWORD = <postgreSQL password>
 ```
-or this if you are using a cloud based PostgreSQL server
+cloud based PostgreSQL server:
 ```
 DBURL = <cloud based database connection String>
+```
+Supabase S3 Bucket environment:
+```
+SUPABASE_URL = <SUPABASE Project URL>
+SUPABASE_BUCKET = <SUPABASE Bucket Name>
+SUPABASE_SERVICE_ROLE_KEY= <SUPABASE Service Role Key>
 ```
 
 3. Run the application

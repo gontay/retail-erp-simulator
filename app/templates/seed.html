@@ -44,15 +44,36 @@
 
 <hr>
 
+<h2>Seed Delivery Orders</h2>
+<p style="color:#555;font-size:0.9em">
+    Samples existing sales records and uploads a mock delivery CSV to Supabase Storage.
+    Requires sales to be seeded first.
+</p>
+<form method="post" action="/seed/deliveries">
+    <input type="number" name="sample_size" placeholder="Number of orders" value="50">
+    <input type="text"   name="filename"    placeholder="Filename (optional, auto-generated if blank)">
+    <button type="submit">Seed Delivery Orders</button>
+</form>
+ 
+<hr>
+ 
 <h2>Seed Everything</h2>
+<p style="color:#555;font-size:0.9em">Includes delivery order generation as the final step.</p>
 <form method="post" action="/seed/all">
     <button type="submit">Seed Everything</button>
 </form>
-
+ 
 {% if message %}
     <p class="success">{{ message }}</p>
 {% endif %}
-
+ 
+{% if delivery_url %}
+    <p>
+        📦 CSV uploaded:
+        <a href="{{ delivery_url }}" target="_blank">{{ delivery_url }}</a>
+    </p>
+{% endif %}
+ 
 {% if error %}
     <p class="error">{{ error }}</p>
 {% endif %}

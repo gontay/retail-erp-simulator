@@ -2,7 +2,7 @@ import random
 from decimal import Decimal
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends, Form, File, UploadFile
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from faker import Faker
@@ -10,6 +10,7 @@ from faker import Faker
 from ..db import get_db
 from .. import models
 from ..utils.accounting import post_journal_entry
+from ..utils.delivery_simulator import generate_and_upload_deliveries
 
 router = APIRouter(prefix="/seed", tags=["Seed"])
 templates = Jinja2Templates(directory="app/templates")
@@ -466,8 +467,50 @@ def seed_assets(
                 "error": str(e)
             }
         )
-
-
+# =========================================================
+# SEED DELIVERIES  ← new
+# =========================================================
+@router.post("/deliveries")
+def seed_deliveries(
+    request: Request,
+    sample_size: int = Form(50),
+    filename: str    = Form(""),
+    db: Session      = Depends(get_db),
+):
+    try:
+        result = generate_and_upload_deliveries(
+            db          = db,
+            sample_size = sample_size,
+            filename    = filename.strip() or None,
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="seed.html",
+            context={
+                "request":  request,
+                "message":  (
+                    f"Generated {result['rows_generated']} delivery orders → "
+                    f"uploaded to {result['bucket']}/{result['filename']}. "
+                    f"Breakdown: { ', '.join(f'{k}: {v}' for k, v in result['status_breakdown'].items()) }."
+                ),
+                "error":    None,
+                "delivery_url": result["public_url"],
+            }
+        )
+ 
+    except Exception as e:
+        return templates.TemplateResponse(
+            request=request,
+            name="seed.html",
+            context={
+                "request": request,
+                "message": None,
+                "error":   str(e),
+                "delivery_url": None,
+            }
+        )
+ 
+ 
 # =========================================================
 # SEED EVERYTHING
 # =========================================================
@@ -492,7 +535,7 @@ def seed_all(
             db.add(bp)
             db.flush()
             db.add(models.Customer(business_partner_id=bp.id, customer_group=random.choice(["Retail", "VIP", "Corporate"])))
-
+ 
         for _ in range(10):
             code = f"SUP-{fake.unique.random_int(10000, 99999)}"
             bp = models.BusinessPartner(
@@ -507,9 +550,9 @@ def seed_all(
             db.add(bp)
             db.flush()
             db.add(models.Supplier(business_partner_id=bp.id, supplier_category=random.choice(["Apparel", "Electronics", "Home", "Beauty"])))
-
+ 
         db.flush()
-
+ 
         # --- Inventory ---
         categories = ["Apparel", "Electronics", "Home", "Beauty", "Sports", "Toys"]
         for _ in range(50):
@@ -517,7 +560,7 @@ def seed_all(
             cost = dec(random.uniform(5, 200))
             price = dec(float(cost) * random.uniform(1.2, 2.5))
             qty = dec(random.randint(10, 200))
-
+ 
             item = models.Inventory(
                 sku=sku,
                 product_name=f"{random.choice(categories)} {fake.word().title()}",
@@ -529,34 +572,34 @@ def seed_all(
             )
             db.add(item)
             db.flush()
-
+ 
             opening_value = qty * cost
             post_journal_entry(db, date.today(), "INVENTORY_OPENING", item.id, "1200", "Inventory", debit=opening_value)
             post_journal_entry(db, date.today(), "INVENTORY_OPENING", item.id, "3000", "Opening Equity Adjustment", credit=opening_value)
-
+ 
         db.flush()
-
+ 
         customers = db.query(models.Customer).all()
         suppliers = db.query(models.Supplier).all()
         inventory_items = db.query(models.Inventory).all()
-
+ 
         # --- Sales ---
         for _ in range(100):
             inventory = random.choice(inventory_items)
             available_stock = Decimal(str(inventory.quantity_on_hand or 0))
             if available_stock <= 1:
                 continue
-
+ 
             customer = random.choice(customers)
             qty = dec(random.randint(1, min(5, int(available_stock))))
             price = Decimal(str(inventory.unit_price))
             cost = Decimal(str(inventory.unit_cost))
             sale_dt = random_past_date(180)
             payment_method = random.choice(["cash", "credit"])
-
+ 
             total_amount = qty * price
             cogs_total = qty * cost
-
+ 
             sale = models.Sales(
                 customer_id=customer.id,
                 sale_date=sale_dt,
@@ -566,7 +609,7 @@ def seed_all(
             )
             db.add(sale)
             db.flush()
-
+ 
             db.add(models.SaleItem(
                 sale_id=sale.id,
                 inventory_id=inventory.id,
@@ -574,9 +617,9 @@ def seed_all(
                 unit_price=price,
                 line_total=total_amount
             ))
-
+ 
             inventory.quantity_on_hand = available_stock - qty
-
+ 
             if payment_method == "credit":
                 db.add(models.AccountsReceivable(
                     customer_id=customer.id,
@@ -588,22 +631,22 @@ def seed_all(
                 post_journal_entry(db, sale_dt, "SALE", sale.id, "1100", "Accounts Receivable", debit=total_amount)
             else:
                 post_journal_entry(db, sale_dt, "SALE", sale.id, "1000", "Cash / Treasury", debit=total_amount)
-
+ 
             post_journal_entry(db, sale_dt, "SALE", sale.id, "4000", "Sales Revenue", credit=total_amount)
             post_journal_entry(db, sale_dt, "SALE", sale.id, "5000", "Cost of Goods Sold", debit=cogs_total)
             post_journal_entry(db, sale_dt, "SALE", sale.id, "1200", "Inventory", credit=cogs_total)
-
+ 
         # --- Purchases ---
         for _ in range(80):
             supplier = random.choice(suppliers)
             inventory = random.choice(inventory_items)
-
+ 
             qty = dec(random.randint(5, 30))
             cost = dec(random.uniform(5, 200))
             total_amount = qty * cost
             purchase_dt = random_past_date(180)
             payment_method = random.choice(["cash", "credit"])
-
+ 
             purchase = models.Purchases(
                 supplier_id=supplier.id,
                 purchase_date=purchase_dt,
@@ -613,7 +656,7 @@ def seed_all(
             )
             db.add(purchase)
             db.flush()
-
+ 
             db.add(models.PurchaseItem(
                 purchase_id=purchase.id,
                 inventory_id=inventory.id,
@@ -621,12 +664,12 @@ def seed_all(
                 unit_cost=cost,
                 line_total=total_amount
             ))
-
+ 
             inventory.quantity_on_hand = Decimal(str(inventory.quantity_on_hand or 0)) + qty
             inventory.unit_cost = cost
-
+ 
             post_journal_entry(db, purchase_dt, "PURCHASE", purchase.id, "1200", "Inventory", debit=total_amount)
-
+ 
             if payment_method == "credit":
                 db.add(models.AccountsPayable(
                     supplier_id=supplier.id,
@@ -638,7 +681,7 @@ def seed_all(
                 post_journal_entry(db, purchase_dt, "PURCHASE", purchase.id, "2100", "Accounts Payable", credit=total_amount)
             else:
                 post_journal_entry(db, purchase_dt, "PURCHASE", purchase.id, "1000", "Cash / Treasury", credit=total_amount)
-
+ 
         # --- Assets ---
         asset_categories = ["IT Equipment", "Furniture", "Store Fixtures", "Office Equipment"]
         for _ in range(20):
@@ -648,7 +691,7 @@ def seed_all(
             salvage = dec(float(cost) * random.uniform(0.0, 0.1))
             useful_life = random.choice([24, 36, 48, 60])
             payment_method = random.choice(["cash", "credit"])
-
+ 
             asset = models.Asset(
                 asset_code=f"AST-{fake.unique.random_int(10000, 99999)}",
                 asset_name=f"{random.choice(asset_categories)} {fake.word().title()}",
@@ -661,9 +704,9 @@ def seed_all(
             )
             db.add(asset)
             db.flush()
-
+ 
             post_journal_entry(db, acq_date, "ASSET", asset.id, "1500", "Fixed Assets", debit=cost)
-
+ 
             if payment_method == "credit" and supplier:
                 db.add(models.AccountsPayable(
                     supplier_id=supplier.id,
@@ -675,19 +718,27 @@ def seed_all(
                 post_journal_entry(db, acq_date, "ASSET", asset.id, "2100", "Accounts Payable", credit=cost)
             else:
                 post_journal_entry(db, acq_date, "ASSET", asset.id, "1000", "Cash / Treasury", credit=cost)
-
+ 
         db.commit()
-
+ 
+        # --- Deliveries (runs after commit so sales exist) ← new ---
+        delivery_result = generate_and_upload_deliveries(db=db, sample_size=50)
+ 
         return templates.TemplateResponse(
             request=request,
             name="seed.html",
             context={
                 "request": request,
-                "message": "Seeded everything successfully.",
-                "error": None
+                "message": (
+                    "Seeded everything successfully. "
+                    f"Deliveries: {delivery_result['rows_generated']} orders uploaded to "
+                    f"{delivery_result['bucket']}/{delivery_result['filename']}."
+                ),
+                "error": None,
+                "delivery_url": delivery_result["public_url"],
             }
         )
-
+ 
     except Exception as e:
         db.rollback()
         return templates.TemplateResponse(
@@ -696,6 +747,7 @@ def seed_all(
             context={
                 "request": request,
                 "message": None,
-                "error": str(e)
+                "error": str(e),
+                "delivery_url": None,
             }
         )
