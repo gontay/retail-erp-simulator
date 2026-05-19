@@ -1,5 +1,5 @@
 # retail-erp-simulator
-This an auxillary project to a data pipeline project found on https://github.com/gontay/retail-erp-dbt-datapipeline The tables are hosted on databricks.
+This an auxillary project to a data pipeline project found on https://github.com/gontay/retail-erp-dbt-datapipeline
 This project simulates operational systems and generates transactions to an OLTP Database.
 It includes best practices like including temporal data (time based metadata) for each row via columns "created_at" and "updated_at".
  
