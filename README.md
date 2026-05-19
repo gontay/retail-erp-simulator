@@ -1,6 +1,7 @@
 # retail-erp-simulator
 This an auxillary project to a data pipeline project which is hosted on databricks.
 This project simulates operational systems and generates transactions to an OLTP Database.
+It includes best practices like including temporal data (time based metadata) for each row via columns "created_at" and "updated_at".
  
 ## Prequisites
 This simulator requires you have the following installed:
